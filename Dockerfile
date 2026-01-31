@@ -33,8 +33,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy application code
 COPY backend/ ./
 
-# Create data directory for SQLite
+# Create data directory for SQLite and copy seed database if exists
 RUN mkdir -p /app/data && chown -R appuser:appuser /app
+
+# Copy seed database (for initial data)
+COPY --chown=appuser:appuser backend/expenses.db.backup /app/data/expenses.db
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
