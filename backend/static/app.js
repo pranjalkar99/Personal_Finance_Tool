@@ -1,5 +1,6 @@
 /**
  * Expense Tracker - Production-Ready Frontend Application
+ * With Advanced Analytics & Charts
  */
 
 const API_BASE_URL = '';
@@ -11,6 +12,18 @@ let currentUser = null;
 let currentPage = 1;
 let totalPages = 1;
 let expenseToDelete = null;
+
+// Charts
+let categoryChart = null;
+let monthlyChart = null;
+let dailyChart = null;
+
+// Chart Colors
+const CHART_COLORS = [
+    '#58a6ff', '#7ee787', '#d29922', '#f85149', '#a371f7',
+    '#79c0ff', '#56d364', '#e3b341', '#ff7b72', '#bc8cff',
+    '#a5d6ff', '#aff5b4', '#f8e3a1', '#ffc1ba', '#d8b4fe'
+];
 
 // DOM Elements
 const authSection = document.getElementById('auth-section');
@@ -40,6 +53,10 @@ const pagination = document.getElementById('pagination');
 const deleteModal = document.getElementById('delete-modal');
 const cancelDeleteBtn = document.getElementById('cancel-delete');
 const confirmDeleteBtn = document.getElementById('confirm-delete');
+
+// Tab elements
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', init);
@@ -81,11 +98,35 @@ async function init() {
     cancelDeleteBtn.addEventListener('click', closeDeleteModal);
     confirmDeleteBtn.addEventListener('click', confirmDelete);
     
+    // Tab navigation
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+    
     // Check if logged in
     if (accessToken) {
         await checkAuth();
     } else {
         showAuthSection();
+    }
+}
+
+// === Tab Functions ===
+
+function switchTab(tabName) {
+    // Update tab buttons
+    tabBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    
+    // Update tab contents
+    tabContents.forEach(content => {
+        content.classList.toggle('active', content.id === `${tabName}-tab`);
+    });
+    
+    // Load analytics data when switching to analytics tab
+    if (tabName === 'analytics') {
+        loadAnalytics();
     }
 }
 
@@ -180,6 +221,7 @@ async function handleRegister(e) {
 function handleLogout() {
     clearAuth();
     currentUser = null;
+    destroyCharts();
     showAuthSection();
 }
 
@@ -423,6 +465,322 @@ function setListState(state) {
     document.getElementById('loading-indicator').hidden = state !== 'loading';
     document.getElementById('empty-state').hidden = state !== 'empty';
     document.getElementById('expenses-table').hidden = state !== 'data';
+}
+
+// === Analytics Functions ===
+
+async function loadAnalytics() {
+    try {
+        const response = await fetchWithAuth('/expenses/analytics?months=12');
+        if (response.ok) {
+            const data = await response.json();
+            renderAnalytics(data);
+        }
+    } catch (error) {
+        console.error('Failed to load analytics', error);
+    }
+}
+
+function renderAnalytics(data) {
+    // Update overview cards
+    document.getElementById('analytics-total').textContent = formatCurrency(data.total_expenses);
+    document.getElementById('analytics-lowest').textContent = formatCurrency(data.lowest_expense);
+    document.getElementById('analytics-highest').textContent = formatCurrency(data.highest_expense);
+    document.getElementById('analytics-avg').textContent = formatCurrency(data.average_expense);
+    
+    // Month over month
+    document.getElementById('mom-current').textContent = formatCurrency(data.current_month_total);
+    document.getElementById('mom-previous').textContent = formatCurrency(data.previous_month_total);
+    
+    const changeEl = document.getElementById('mom-change');
+    const change = parseFloat(data.month_over_month_change);
+    changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
+    changeEl.className = `mom-value ${change > 0 ? 'negative' : change < 0 ? 'positive' : 'neutral'}`;
+    
+    // Render charts
+    renderCategoryChart(data.categories);
+    renderMonthlyChart(data.monthly_data);
+    renderDailyChart(data.daily_data);
+    renderCategoryTable(data.categories);
+}
+
+function renderCategoryChart(categories) {
+    const ctx = document.getElementById('category-chart').getContext('2d');
+    
+    if (categoryChart) {
+        categoryChart.destroy();
+    }
+    
+    if (categories.length === 0) {
+        return;
+    }
+    
+    categoryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: categories.map(c => c.category),
+            datasets: [{
+                data: categories.map(c => parseFloat(c.total)),
+                backgroundColor: CHART_COLORS.slice(0, categories.length),
+                borderColor: '#161b22',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: '#21262d',
+                    titleColor: '#f0f6fc',
+                    bodyColor: '#8b949e',
+                    borderColor: '#30363d',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            const value = formatCurrency(context.raw);
+                            const percentage = categories[context.dataIndex].percentage;
+                            return `${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Render custom legend
+    const legendContainer = document.getElementById('category-legend');
+    legendContainer.innerHTML = categories.map((cat, i) => `
+        <div class="legend-item">
+            <span class="legend-color" style="background: ${CHART_COLORS[i]}"></span>
+            <span>${escapeHtml(cat.category)}</span>
+        </div>
+    `).join('');
+}
+
+function renderMonthlyChart(monthlyData) {
+    const ctx = document.getElementById('monthly-chart').getContext('2d');
+    
+    if (monthlyChart) {
+        monthlyChart.destroy();
+    }
+    
+    if (monthlyData.length === 0) {
+        return;
+    }
+    
+    const labels = monthlyData.map(m => {
+        const [year, month] = m.month.split('-');
+        return new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    });
+    
+    monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Monthly Spending',
+                data: monthlyData.map(m => parseFloat(m.total)),
+                backgroundColor: 'rgba(88, 166, 255, 0.6)',
+                borderColor: '#58a6ff',
+                borderWidth: 1,
+                borderRadius: 6,
+                hoverBackgroundColor: 'rgba(88, 166, 255, 0.8)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#8b949e',
+                        font: { size: 11 }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(48, 54, 61, 0.5)'
+                    },
+                    ticks: {
+                        color: '#8b949e',
+                        font: { size: 11 },
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString('en-IN');
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: '#21262d',
+                    titleColor: '#f0f6fc',
+                    bodyColor: '#8b949e',
+                    borderColor: '#30363d',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return formatCurrency(context.raw);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderDailyChart(dailyData) {
+    const ctx = document.getElementById('daily-chart').getContext('2d');
+    
+    if (dailyChart) {
+        dailyChart.destroy();
+    }
+    
+    if (dailyData.length === 0) {
+        return;
+    }
+    
+    const labels = dailyData.map(d => {
+        const date = new Date(d.date);
+        return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    });
+    
+    dailyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Daily Spending',
+                data: dailyData.map(d => parseFloat(d.total)),
+                borderColor: '#7ee787',
+                backgroundColor: 'rgba(126, 231, 135, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#7ee787',
+                pointBorderColor: '#161b22',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#8b949e',
+                        font: { size: 10 },
+                        maxTicksLimit: 10
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(48, 54, 61, 0.5)'
+                    },
+                    ticks: {
+                        color: '#8b949e',
+                        font: { size: 11 },
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString('en-IN');
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: '#21262d',
+                    titleColor: '#f0f6fc',
+                    bodyColor: '#8b949e',
+                    borderColor: '#30363d',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return formatCurrency(context.raw);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderCategoryTable(categories) {
+    const tbody = document.getElementById('category-table-body');
+    
+    if (categories.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    No expense data available
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = categories.map((cat, index) => {
+        let rankClass = '';
+        if (index === 0) rankClass = 'gold';
+        else if (index === 1) rankClass = 'silver';
+        else if (index === 2) rankClass = 'bronze';
+        
+        return `
+            <tr>
+                <td><span class="rank-badge ${rankClass}">${index + 1}</span></td>
+                <td class="category-name">${escapeHtml(cat.category)}</td>
+                <td class="text-right" style="font-family: var(--font-mono);">${formatCurrency(cat.total)}</td>
+                <td class="text-right" style="color: var(--text-secondary);">${cat.count}</td>
+                <td class="text-right" style="font-family: var(--font-mono); color: var(--accent-primary);">${cat.percentage}%</td>
+                <td>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${cat.percentage}%"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function destroyCharts() {
+    if (categoryChart) {
+        categoryChart.destroy();
+        categoryChart = null;
+    }
+    if (monthlyChart) {
+        monthlyChart.destroy();
+        monthlyChart = null;
+    }
+    if (dailyChart) {
+        dailyChart.destroy();
+        dailyChart = null;
+    }
 }
 
 // === Utility Functions ===
