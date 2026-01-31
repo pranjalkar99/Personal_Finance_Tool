@@ -58,11 +58,17 @@ const confirmDeleteBtn = document.getElementById('confirm-delete');
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 
+// Theme
+const themeToggle = document.getElementById('theme-toggle');
+
 // Initialize
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
     document.getElementById('date').valueAsDate = new Date();
+    
+    // Initialize theme from localStorage
+    initTheme();
     
     // Auth form switches
     document.getElementById('show-register').addEventListener('click', (e) => {
@@ -103,11 +109,51 @@ async function init() {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
     
+    // Theme toggle
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+    
     // Check if logged in
     if (accessToken) {
         await checkAuth();
     } else {
         showAuthSection();
+    }
+}
+
+// === Theme Functions ===
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+}
+
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    
+    // Save to server if logged in
+    if (accessToken && currentUser) {
+        saveThemeToServer(newTheme);
+    }
+}
+
+async function saveThemeToServer(theme) {
+    try {
+        await fetchWithAuth('/users/me/theme', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme })
+        });
+    } catch (error) {
+        console.error('Failed to save theme preference', error);
     }
 }
 
@@ -278,6 +324,12 @@ function showAppSection() {
     authSection.hidden = true;
     appSection.hidden = false;
     userDisplay.textContent = currentUser.full_name || currentUser.username;
+    
+    // Apply user's theme preference
+    if (currentUser.theme) {
+        setTheme(currentUser.theme);
+    }
+    
     loadExpenses();
     loadSummary();
 }

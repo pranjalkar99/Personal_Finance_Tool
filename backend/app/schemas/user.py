@@ -38,6 +38,7 @@ class UserUpdate(BaseModel):
     
     full_name: Optional[str] = Field(None, max_length=255)
     email: Optional[EmailStr] = None
+    theme: Optional[str] = Field(None, pattern="^(dark|light)$")
 
 
 class UserResponse(BaseModel):
@@ -50,7 +51,13 @@ class UserResponse(BaseModel):
     username: str
     full_name: Optional[str]
     is_active: bool
+    theme: str = "dark"
     created_at: datetime
+
+
+class ThemeUpdate(BaseModel):
+    """Schema for theme update."""
+    theme: str = Field(..., pattern="^(dark|light)$")
 
 
 class LoginRequest(BaseModel):

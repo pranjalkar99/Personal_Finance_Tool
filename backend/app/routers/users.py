@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.user import UserResponse, UserUpdate
+from app.schemas.user import UserResponse, UserUpdate, ThemeUpdate
 from app.services.user_service import UserService
 from app.core.dependencies import CurrentUser
 
@@ -59,4 +59,22 @@ def deactivate_account(
     """Deactivate the currently authenticated user's account."""
     user_service = UserService(db)
     user_service.deactivate(current_user)
+
+
+@router.patch(
+    "/me/theme",
+    response_model=UserResponse,
+    summary="Update user theme preference"
+)
+def update_theme(
+    theme_data: ThemeUpdate,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db)
+) -> UserResponse:
+    """Update the user's theme preference (dark/light)."""
+    user_service = UserService(db)
+    current_user.theme = theme_data.theme
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
