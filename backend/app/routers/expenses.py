@@ -5,7 +5,7 @@ import io
 from datetime import date
 from decimal import Decimal
 from typing import Optional, Literal
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,9 @@ from app.schemas.expense import (
     ExpenseSummary,
     AnalyticsResponse
 )
+from app.schemas.import_export import ImportResult, ImportPreview
 from app.services.expense_service import ExpenseService
+from app.services.import_service import ImportService
 from app.core.dependencies import CurrentUser
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
@@ -288,3 +290,64 @@ def get_all_tags(
     """Get all unique tags used by the authenticated user."""
     expense_service = ExpenseService(db)
     return expense_service.get_all_tags(current_user.id)
+
+
+@router.post(
+    "/import/preview",
+    response_model=ImportPreview,
+    summary="Preview CSV import"
+)
+async def preview_import(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = None,
+    db: Session = Depends(get_db)
+) -> ImportPreview:
+    """Preview expenses from CSV file before importing."""
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be a CSV"
+        )
+    
+    content = await file.read()
+    try:
+        file_content = content.decode('utf-8')
+    except UnicodeDecodeError:
+        file_content = content.decode('latin-1')
+    
+    import_service = ImportService(db)
+    return import_service.preview_import(current_user, file_content)
+
+
+@router.post(
+    "/import",
+    response_model=ImportResult,
+    summary="Import expenses from CSV"
+)
+async def import_expenses(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = None,
+    db: Session = Depends(get_db)
+) -> ImportResult:
+    """
+    Import expenses from a CSV file.
+    
+    Required columns: date, category, description, amount
+    Optional columns: currency, tags (comma-separated), notes
+    
+    Supported date formats: YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY
+    """
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be a CSV"
+        )
+    
+    content = await file.read()
+    try:
+        file_content = content.decode('utf-8')
+    except UnicodeDecodeError:
+        file_content = content.decode('latin-1')
+    
+    import_service = ImportService(db)
+    return import_service.import_expenses(current_user, file_content)
