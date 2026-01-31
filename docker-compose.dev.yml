@@ -1,0 +1,31 @@
+version: '3.8'
+
+# Development Docker Compose with hot-reload and debugging
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: expense-tracker-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=Expense Tracker (Dev)
+      - DEBUG=true
+      - DATABASE_URL=sqlite:////app/data/expenses.db
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - REFRESH_TOKEN_EXPIRE_DAYS=30
+      - CORS_ORIGINS=["*"]
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/templates:/app/templates:ro
+      - ./backend/static:/app/static:ro
+      - dev-data:/app/data
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+volumes:
+  dev-data:
+
