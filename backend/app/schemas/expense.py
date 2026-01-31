@@ -87,6 +87,7 @@ class ExpenseFilters(BaseModel):
     end_date: Optional[date] = None
     min_amount: Optional[Decimal] = None
     max_amount: Optional[Decimal] = None
+    search: Optional[str] = Field(None, description="Search in description")
     sort: Optional[Literal["date_desc", "date_asc", "amount_desc", "amount_asc"]] = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=1, le=100)

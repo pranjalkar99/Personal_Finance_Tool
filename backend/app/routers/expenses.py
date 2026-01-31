@@ -60,6 +60,7 @@ def list_expenses(
     end_date: Optional[date] = Query(None, description="Filter to date"),
     min_amount: Optional[Decimal] = Query(None, description="Minimum amount"),
     max_amount: Optional[Decimal] = Query(None, description="Maximum amount"),
+    search: Optional[str] = Query(None, description="Search in description"),
     sort: Optional[Literal["date_desc", "date_asc", "amount_desc", "amount_asc"]] = Query(
         None, description="Sort order"
     ),
@@ -75,6 +76,7 @@ def list_expenses(
         end_date=end_date,
         min_amount=min_amount,
         max_amount=max_amount,
+        search=search,
         sort=sort,
         page=page,
         page_size=page_size

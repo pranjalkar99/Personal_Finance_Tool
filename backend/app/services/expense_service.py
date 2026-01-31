@@ -99,6 +99,10 @@ class ExpenseService:
         
         if filters.max_amount is not None:
             query = query.filter(Expense.amount <= filters.max_amount)
+        
+        # Search in description
+        if filters.search:
+            query = query.filter(Expense.description.ilike(f"%{filters.search}%"))
 
         # Get total count and sum before pagination
         total_count = query.count()
