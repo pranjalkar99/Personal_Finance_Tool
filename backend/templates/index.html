@@ -113,8 +113,16 @@
                     <span class="tab-icon">≡</span>
                     Expenses
                 </button>
-                <button class="tab-btn" data-tab="analytics">
+                <button class="tab-btn" data-tab="budgets">
                     <span class="tab-icon">◎</span>
+                    Budgets
+                </button>
+                <button class="tab-btn" data-tab="recurring">
+                    <span class="tab-icon">↻</span>
+                    Recurring
+                </button>
+                <button class="tab-btn" data-tab="analytics">
+                    <span class="tab-icon">◐</span>
                     Analytics
                 </button>
             </nav>
@@ -152,13 +160,24 @@
                     <section class="card form-section">
                         <h2 class="section-title">
                             <span class="title-icon">+</span>
-                            New Expense
+                            <span id="form-title">New Expense</span>
                         </h2>
                         <form id="expense-form" class="expense-form">
+                            <input type="hidden" id="edit-expense-id" value="">
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="amount">Amount (₹)</label>
+                                    <label for="amount">Amount</label>
                                     <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group" style="max-width: 100px;">
+                                    <label for="currency">Currency</label>
+                                    <select id="currency" name="currency">
+                                        <option value="INR">₹ INR</option>
+                                        <option value="USD">$ USD</option>
+                                        <option value="EUR">€ EUR</option>
+                                        <option value="GBP">£ GBP</option>
+                                        <option value="JPY">¥ JPY</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label for="category">Category</label>
@@ -186,10 +205,23 @@
                                     <input type="text" id="description" name="description" placeholder="What was this expense for?" maxlength="500" required>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary" id="submit-btn">
-                                <span class="btn-text">Add Expense</span>
-                                <span class="btn-loading" hidden>Adding...</span>
-                            </button>
+                            <div class="form-row">
+                                <div class="form-group flex-grow">
+                                    <label for="tags">Tags <small>(comma separated)</small></label>
+                                    <input type="text" id="tags" name="tags" placeholder="e.g., work, personal, urgent">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="notes">Notes <small>(optional)</small></label>
+                                <textarea id="notes" name="notes" rows="2" placeholder="Additional notes..." maxlength="2000"></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary" id="submit-btn">
+                                    <span class="btn-text">Add Expense</span>
+                                    <span class="btn-loading" hidden>Saving...</span>
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="cancel-edit-btn" hidden>Cancel</button>
+                            </div>
                         </form>
                         <div id="form-message" class="form-message" hidden></div>
                     </section>
@@ -202,11 +234,19 @@
                                 Expenses
                             </h2>
                             <div class="list-actions">
+                                <label class="btn btn-secondary btn-sm import-btn">
+                                    <input type="file" id="import-file" accept=".csv" hidden>
+                                    Import CSV
+                                </label>
                                 <button id="export-btn" class="btn btn-secondary btn-sm">Export CSV</button>
                             </div>
                         </div>
                         
                         <div class="filters">
+                            <div class="filter-group">
+                                <label for="filter-search">Search:</label>
+                                <input type="text" id="filter-search" placeholder="Search description...">
+                            </div>
                             <div class="filter-group">
                                 <label for="filter-category">Category:</label>
                                 <select id="filter-category">
@@ -265,6 +305,7 @@
                                         <th>Date</th>
                                         <th>Category</th>
                                         <th>Description</th>
+                                        <th>Tags</th>
                                         <th class="text-right">Amount</th>
                                         <th class="text-center">Actions</th>
                                     </tr>
@@ -278,6 +319,150 @@
                                 <span id="page-info" class="page-info">Page 1 of 1</span>
                                 <button id="next-page" class="btn btn-secondary btn-sm" disabled>Next →</button>
                             </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Budgets Tab -->
+                <div id="budgets-tab" class="tab-content">
+                    <section class="card">
+                        <div class="list-header">
+                            <h2 class="section-title">
+                                <span class="title-icon">◎</span>
+                                Budget Alerts
+                            </h2>
+                        </div>
+                        <div id="budget-alerts" class="budget-alerts"></div>
+                    </section>
+
+                    <section class="card form-section">
+                        <h2 class="section-title">
+                            <span class="title-icon">+</span>
+                            Set Budget
+                        </h2>
+                        <form id="budget-form" class="expense-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="budget-category">Category</label>
+                                    <select id="budget-category" required>
+                                        <option value="">Select category</option>
+                                        <option value="Food & Dining">Food & Dining</option>
+                                        <option value="Transportation">Transportation</option>
+                                        <option value="Shopping">Shopping</option>
+                                        <option value="Entertainment">Entertainment</option>
+                                        <option value="Bills & Utilities">Bills & Utilities</option>
+                                        <option value="Healthcare">Healthcare</option>
+                                        <option value="Education">Education</option>
+                                        <option value="Travel">Travel</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="budget-limit">Monthly Limit (₹)</label>
+                                    <input type="number" id="budget-limit" step="0.01" min="1" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="budget-alert">Alert at (%)</label>
+                                    <input type="number" id="budget-alert" min="50" max="100" value="80" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Set Budget</button>
+                        </form>
+                        <div id="budget-message" class="form-message" hidden></div>
+                    </section>
+
+                    <section class="card">
+                        <h2 class="section-title">
+                            <span class="title-icon">≡</span>
+                            Your Budgets
+                        </h2>
+                        <div id="budgets-list" class="budgets-list">
+                            <p class="empty-text">No budgets set yet.</p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Recurring Tab -->
+                <div id="recurring-tab" class="tab-content">
+                    <section class="card form-section">
+                        <h2 class="section-title">
+                            <span class="title-icon">+</span>
+                            Add Recurring Expense
+                        </h2>
+                        <form id="recurring-form" class="expense-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="recurring-amount">Amount (₹)</label>
+                                    <input type="number" id="recurring-amount" step="0.01" min="0.01" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="recurring-category">Category</label>
+                                    <select id="recurring-category" required>
+                                        <option value="">Select category</option>
+                                        <option value="Food & Dining">Food & Dining</option>
+                                        <option value="Transportation">Transportation</option>
+                                        <option value="Shopping">Shopping</option>
+                                        <option value="Entertainment">Entertainment</option>
+                                        <option value="Bills & Utilities">Bills & Utilities</option>
+                                        <option value="Healthcare">Healthcare</option>
+                                        <option value="Education">Education</option>
+                                        <option value="Travel">Travel</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="recurring-frequency">Frequency</label>
+                                    <select id="recurring-frequency" required>
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly" selected>Monthly</option>
+                                        <option value="yearly">Yearly</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group flex-grow">
+                                    <label for="recurring-description">Description</label>
+                                    <input type="text" id="recurring-description" placeholder="e.g., Netflix subscription" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="recurring-start">Start Date</label>
+                                    <input type="date" id="recurring-start" required>
+                                </div>
+                            </div>
+                            <div class="form-row" id="recurring-options">
+                                <div class="form-group" id="day-of-week-group" hidden>
+                                    <label for="recurring-dow">Day of Week</label>
+                                    <select id="recurring-dow">
+                                        <option value="0">Monday</option>
+                                        <option value="1">Tuesday</option>
+                                        <option value="2">Wednesday</option>
+                                        <option value="3">Thursday</option>
+                                        <option value="4">Friday</option>
+                                        <option value="5">Saturday</option>
+                                        <option value="6">Sunday</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="day-of-month-group">
+                                    <label for="recurring-dom">Day of Month</label>
+                                    <input type="number" id="recurring-dom" min="1" max="31" value="1">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Recurring</button>
+                        </form>
+                        <div id="recurring-message" class="form-message" hidden></div>
+                    </section>
+
+                    <section class="card">
+                        <div class="list-header">
+                            <h2 class="section-title">
+                                <span class="title-icon">↻</span>
+                                Active Recurring Expenses
+                            </h2>
+                            <button id="process-recurring-btn" class="btn btn-primary btn-sm">Process Due</button>
+                        </div>
+                        <div id="recurring-list" class="recurring-list">
+                            <p class="empty-text">No recurring expenses set up.</p>
                         </div>
                     </section>
                 </div>
@@ -420,6 +605,18 @@
             <div class="modal-actions">
                 <button id="cancel-delete" class="btn btn-secondary">Cancel</button>
                 <button id="confirm-delete" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Preview Modal -->
+    <div id="import-modal" class="modal" hidden>
+        <div class="modal-content modal-lg">
+            <h3>Import Preview</h3>
+            <div id="import-preview"></div>
+            <div class="modal-actions">
+                <button id="cancel-import" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-import" class="btn btn-primary">Import All</button>
             </div>
         </div>
     </div>
