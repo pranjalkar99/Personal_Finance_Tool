@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Auth Section (shown when not logged in) -->
+        <div id="auth-section" class="auth-section">
+            <header class="app-header">
+                <div class="logo">
+                    <span class="logo-icon">◈</span>
+                    <h1>Expense Tracker</h1>
+                </div>
+                <p class="tagline">Track where your money goes</p>
+            </header>
+
+            <div class="auth-container">
+                <!-- Login Form -->
+                <div id="login-form-container" class="card auth-card">
+                    <h2 class="section-title">
+                        <span class="title-icon">→</span>
+                        Login
+                    </h2>
+                    <form id="login-form" class="auth-form">
+                        <div class="form-group">
+                            <label for="login-username">Username or Email</label>
+                            <input type="text" id="login-username" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Password</label>
+                            <input type="password" id="login-password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full">
+                            <span class="btn-text">Login</span>
+                            <span class="btn-loading" hidden>Logging in...</span>
+                        </button>
+                    </form>
+                    <div id="login-message" class="form-message" hidden></div>
+                    <p class="auth-switch">
+                        Don't have an account? 
+                        <a href="#" id="show-register">Register here</a>
+                    </p>
+                </div>
+
+                <!-- Register Form -->
+                <div id="register-form-container" class="card auth-card" hidden>
+                    <h2 class="section-title">
+                        <span class="title-icon">+</span>
+                        Register
+                    </h2>
+                    <form id="register-form" class="auth-form">
+                        <div class="form-group">
+                            <label for="register-email">Email</label>
+                            <input type="email" id="register-email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="register-username">Username</label>
+                            <input type="text" id="register-username" name="username" minlength="3" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="register-fullname">Full Name (optional)</label>
+                            <input type="text" id="register-fullname" name="full_name">
+                        </div>
+                        <div class="form-group">
+                            <label for="register-password">Password</label>
+                            <input type="password" id="register-password" name="password" minlength="8" required>
+                            <small class="input-hint">Min 8 chars, include uppercase, lowercase, and number</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full">
+                            <span class="btn-text">Create Account</span>
+                            <span class="btn-loading" hidden>Creating...</span>
+                        </button>
+                    </form>
+                    <div id="register-message" class="form-message" hidden></div>
+                    <p class="auth-switch">
+                        Already have an account? 
+                        <a href="#" id="show-login">Login here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Section (shown when logged in) -->
+        <div id="app-section" class="main-app" hidden>
+            <header class="app-header app-header-compact">
+                <div class="header-content">
+                    <div class="logo">
+                        <span class="logo-icon">◈</span>
+                        <h1>Expense Tracker</h1>
+                    </div>
+                    <div class="user-menu">
+                        <span id="user-display" class="user-name"></span>
+                        <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Navigation Tabs -->
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="expenses">
+                    <span class="tab-icon">≡</span>
+                    Expenses
+                </button>
+                <button class="tab-btn" data-tab="analytics">
+                    <span class="tab-icon">◎</span>
+                    Analytics
+                </button>
+            </nav>
+
+            <main class="main-content">
+                <!-- Expenses Tab -->
+                <div id="expenses-tab" class="tab-content active">
+                    <!-- Summary Dashboard -->
+                    <section class="card summary-section">
+                        <h2 class="section-title">
+                            <span class="title-icon">◉</span>
+                            Summary
+                        </h2>
+                        <div class="summary-grid">
+                            <div class="summary-card">
+                                <div class="summary-label">Total Expenses</div>
+                                <div class="summary-value" id="summary-total">₹0.00</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">This Month</div>
+                                <div class="summary-value" id="summary-month">₹0.00</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">Expense Count</div>
+                                <div class="summary-value" id="summary-count">0</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">Average</div>
+                                <div class="summary-value" id="summary-avg">₹0.00</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Add Expense Form -->
+                    <section class="card form-section">
+                        <h2 class="section-title">
+                            <span class="title-icon">+</span>
+                            New Expense
+                        </h2>
+                        <form id="expense-form" class="expense-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="amount">Amount (₹)</label>
+                                    <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="category">Category</label>
+                                    <select id="category" name="category" required>
+                                        <option value="">Select category</option>
+                                        <option value="Food & Dining">Food & Dining</option>
+                                        <option value="Transportation">Transportation</option>
+                                        <option value="Shopping">Shopping</option>
+                                        <option value="Entertainment">Entertainment</option>
+                                        <option value="Bills & Utilities">Bills & Utilities</option>
+                                        <option value="Healthcare">Healthcare</option>
+                                        <option value="Education">Education</option>
+                                        <option value="Travel">Travel</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="date">Date</label>
+                                    <input type="date" id="date" name="date" required>
+                                </div>
+                                <div class="form-group flex-grow">
+                                    <label for="description">Description</label>
+                                    <input type="text" id="description" name="description" placeholder="What was this expense for?" maxlength="500" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="submit-btn">
+                                <span class="btn-text">Add Expense</span>
+                                <span class="btn-loading" hidden>Adding...</span>
+                            </button>
+                        </form>
+                        <div id="form-message" class="form-message" hidden></div>
+                    </section>
+
+                    <!-- Expenses List -->
+                    <section class="card list-section">
+                        <div class="list-header">
+                            <h2 class="section-title">
+                                <span class="title-icon">≡</span>
+                                Expenses
+                            </h2>
+                            <div class="list-actions">
+                                <button id="export-btn" class="btn btn-secondary btn-sm">Export CSV</button>
+                            </div>
+                        </div>
+                        
+                        <div class="filters">
+                            <div class="filter-group">
+                                <label for="filter-category">Category:</label>
+                                <select id="filter-category">
+                                    <option value="">All</option>
+                                    <option value="Food & Dining">Food & Dining</option>
+                                    <option value="Transportation">Transportation</option>
+                                    <option value="Shopping">Shopping</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                    <option value="Bills & Utilities">Bills & Utilities</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Education">Education</option>
+                                    <option value="Travel">Travel</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="filter-start-date">From:</label>
+                                <input type="date" id="filter-start-date">
+                            </div>
+                            <div class="filter-group">
+                                <label for="filter-end-date">To:</label>
+                                <input type="date" id="filter-end-date">
+                            </div>
+                            <div class="filter-group">
+                                <label for="sort-order">Sort:</label>
+                                <select id="sort-order">
+                                    <option value="date_desc">Newest First</option>
+                                    <option value="date_asc">Oldest First</option>
+                                    <option value="amount_desc">Highest Amount</option>
+                                    <option value="amount_asc">Lowest Amount</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Total Summary -->
+                        <div class="total-summary" id="total-summary">
+                            <div class="total-label">Filtered Total</div>
+                            <div class="total-amount" id="total-amount">₹0.00</div>
+                            <div class="total-count" id="total-count">0 expenses</div>
+                        </div>
+
+                        <!-- Expenses Table -->
+                        <div class="expenses-container">
+                            <div id="loading-indicator" class="loading" hidden>
+                                <div class="loading-spinner"></div>
+                                <span>Loading expenses...</span>
+                            </div>
+                            <div id="empty-state" class="empty-state" hidden>
+                                <div class="empty-icon">○</div>
+                                <p>No expenses found</p>
+                                <span>Add your first expense above</span>
+                            </div>
+                            <table class="expenses-table" id="expenses-table" hidden>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Category</th>
+                                        <th>Description</th>
+                                        <th class="text-right">Amount</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="expenses-body"></tbody>
+                            </table>
+                            
+                            <!-- Pagination -->
+                            <div id="pagination" class="pagination" hidden>
+                                <button id="prev-page" class="btn btn-secondary btn-sm" disabled>← Previous</button>
+                                <span id="page-info" class="page-info">Page 1 of 1</span>
+                                <button id="next-page" class="btn btn-secondary btn-sm" disabled>Next →</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Analytics Tab -->
+                <div id="analytics-tab" class="tab-content">
+                    <!-- Analytics Overview Cards -->
+                    <section class="card analytics-overview">
+                        <h2 class="section-title">
+                            <span class="title-icon">◎</span>
+                            Analytics Overview
+                        </h2>
+                        <div class="analytics-cards">
+                            <div class="analytics-card analytics-card-primary">
+                                <div class="analytics-icon">∑</div>
+                                <div class="analytics-data">
+                                    <div class="analytics-value" id="analytics-total">₹0.00</div>
+                                    <div class="analytics-label">Total Spending</div>
+                                </div>
+                            </div>
+                            <div class="analytics-card analytics-card-success">
+                                <div class="analytics-icon">↓</div>
+                                <div class="analytics-data">
+                                    <div class="analytics-value" id="analytics-lowest">₹0.00</div>
+                                    <div class="analytics-label">Lowest Expense</div>
+                                </div>
+                            </div>
+                            <div class="analytics-card analytics-card-warning">
+                                <div class="analytics-icon">↑</div>
+                                <div class="analytics-data">
+                                    <div class="analytics-value" id="analytics-highest">₹0.00</div>
+                                    <div class="analytics-label">Highest Expense</div>
+                                </div>
+                            </div>
+                            <div class="analytics-card analytics-card-info">
+                                <div class="analytics-icon">≈</div>
+                                <div class="analytics-data">
+                                    <div class="analytics-value" id="analytics-avg">₹0.00</div>
+                                    <div class="analytics-label">Average</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Month over Month -->
+                    <section class="card mom-section">
+                        <h2 class="section-title">
+                            <span class="title-icon">⇅</span>
+                            Month Over Month
+                        </h2>
+                        <div class="mom-grid">
+                            <div class="mom-card">
+                                <div class="mom-label">This Month</div>
+                                <div class="mom-value" id="mom-current">₹0.00</div>
+                            </div>
+                            <div class="mom-card">
+                                <div class="mom-label">Last Month</div>
+                                <div class="mom-value" id="mom-previous">₹0.00</div>
+                            </div>
+                            <div class="mom-card mom-change">
+                                <div class="mom-label">Change</div>
+                                <div class="mom-value" id="mom-change">0%</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Charts Grid -->
+                    <div class="charts-grid">
+                        <!-- Category Pie Chart -->
+                        <section class="card chart-card">
+                            <h2 class="section-title">
+                                <span class="title-icon">◐</span>
+                                Spending by Category
+                            </h2>
+                            <div class="chart-container">
+                                <canvas id="category-chart"></canvas>
+                            </div>
+                            <div class="chart-legend" id="category-legend"></div>
+                        </section>
+
+                        <!-- Monthly Bar Chart -->
+                        <section class="card chart-card">
+                            <h2 class="section-title">
+                                <span class="title-icon">▥</span>
+                                Monthly Spending Trend
+                            </h2>
+                            <div class="chart-container chart-container-bar">
+                                <canvas id="monthly-chart"></canvas>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Daily Line Chart -->
+                    <section class="card chart-card chart-card-wide">
+                        <h2 class="section-title">
+                            <span class="title-icon">〜</span>
+                            Daily Spending (Last 30 Days)
+                        </h2>
+                        <div class="chart-container chart-container-line">
+                            <canvas id="daily-chart"></canvas>
+                        </div>
+                    </section>
+
+                    <!-- Top Categories Table -->
+                    <section class="card analytics-table-section">
+                        <h2 class="section-title">
+                            <span class="title-icon">★</span>
+                            Category Breakdown
+                        </h2>
+                        <div class="analytics-table-container">
+                            <table class="analytics-table" id="category-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Category</th>
+                                        <th class="text-right">Total</th>
+                                        <th class="text-right">Count</th>
+                                        <th class="text-right">%</th>
+                                        <th>Distribution</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="category-table-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </main>
+
+            <footer class="app-footer">
+                <p>Built with FastAPI & Jinja2 | Production Ready</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal" hidden>
+        <div class="modal-content">
+            <h3>Delete Expense</h3>
+            <p>Are you sure you want to delete this expense?</p>
+            <div class="modal-actions">
+                <button id="cancel-delete" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-delete" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='app.js') }}"></script>
+</body>
+</html>
