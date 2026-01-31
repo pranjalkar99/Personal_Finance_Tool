@@ -274,3 +274,17 @@ def delete_expense(
         )
     
     expense_service.delete(expense)
+
+
+@router.get(
+    "/tags/all",
+    response_model=list[str],
+    summary="Get all user tags"
+)
+def get_all_tags(
+    current_user: CurrentUser,
+    db: Session = Depends(get_db)
+) -> list[str]:
+    """Get all unique tags used by the authenticated user."""
+    expense_service = ExpenseService(db)
+    return expense_service.get_all_tags(current_user.id)

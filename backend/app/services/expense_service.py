@@ -49,7 +49,10 @@ class ExpenseService:
             category=expense_data.category,
             description=expense_data.description,
             date=expense_data.date,
-            idempotency_key=expense_data.idempotency_key
+            idempotency_key=expense_data.idempotency_key,
+            currency=expense_data.currency,
+            tags=expense_data.tags or [],
+            notes=expense_data.notes
         )
         self.db.add(expense)
         self.db.commit()
@@ -293,3 +296,16 @@ class ExpenseService:
             Expense.user_id == user_id
         ).distinct().all()
         return sorted([c[0] for c in categories])
+
+    def get_all_tags(self, user_id: int) -> List[str]:
+        """Get all unique tags used by a user."""
+        expenses = self.db.query(Expense.tags).filter(
+            Expense.user_id == user_id
+        ).all()
+        
+        all_tags = set()
+        for (tags,) in expenses:
+            if tags:
+                all_tags.update(tags)
+        
+        return sorted(list(all_tags))
