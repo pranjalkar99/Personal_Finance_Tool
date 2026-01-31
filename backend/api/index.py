@@ -9,6 +9,4 @@ sys.path.insert(0, str(backend_path))
 
 from app.main import app
 
-# Export for Vercel
-handler = app
-
+# Vercel expects 'app' for ASGI applications
