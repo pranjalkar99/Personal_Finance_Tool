@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 
 from app.core.config import settings
 from app.database import create_tables
-from app.routers import auth_router, expenses_router, users_router, budgets_router
+from app.routers import auth_router, expenses_router, users_router, budgets_router, recurring_router
 
 # Configure logging
 logging.basicConfig(
@@ -86,6 +86,7 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(expenses_router)
 app.include_router(budgets_router)
+app.include_router(recurring_router)
 
 
 @app.get("/", include_in_schema=False)
